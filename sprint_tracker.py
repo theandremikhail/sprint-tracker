@@ -62,7 +62,7 @@ def init_google_sheets():
             # Share with your personal Google account so you can access it
             try:
                 # Replace this with YOUR email address (the one you use for Google Drive)
-                your_email = "your-actual-email@gmail.com"  # ← Change this to your email
+                your_email = "andremikhailserra3@gmail.com"  # ← Change this to your email
                 spreadsheet.share(your_email, perm_type='user', role='writer')
                 st.info(f"📧 Shared spreadsheet with {your_email}")
             except Exception as share_error:
