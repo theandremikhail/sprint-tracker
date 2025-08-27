@@ -26,11 +26,13 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Google Sheets configuration
+# Replace the init_google_sheets function in your sprint_tracker.py with this:
+
 @st.cache_resource
 def init_google_sheets():
     """Initialize Google Sheets connection"""
     try:
-        # Try to get credentials from Streamlit secrets
+        # Only try to get credentials from Streamlit secrets
         if "gcp_service_account" in st.secrets:
             credentials_info = st.secrets["gcp_service_account"]
             credentials = Credentials.from_service_account_info(
@@ -41,14 +43,9 @@ def init_google_sheets():
                 ]
             )
         else:
-            # Fallback for local development - you'll need to place service account JSON file
-            credentials = Credentials.from_service_account_file(
-                "service_account.json",
-                scopes=[
-                    "https://www.googleapis.com/auth/spreadsheets", 
-                    "https://www.googleapis.com/auth/drive"
-                ]
-            )
+            st.error("Google Cloud credentials not found in Streamlit secrets.")
+            st.info("Please add your service account credentials to Streamlit secrets.")
+            return None
         
         gc = gspread.authorize(credentials)
         
@@ -56,12 +53,17 @@ def init_google_sheets():
         spreadsheet_name = "Sprint Tracker Data"
         try:
             spreadsheet = gc.open(spreadsheet_name)
+            st.success(f"Connected to existing spreadsheet: {spreadsheet_name}")
         except gspread.SpreadsheetNotFound:
             # Create new spreadsheet
             spreadsheet = gc.create(spreadsheet_name)
+            st.success(f"Created new spreadsheet: {spreadsheet_name}")
             
             # Make it accessible (optional - makes it viewable by anyone with link)
-            spreadsheet.share('', perm_type='anyone', role='reader')
+            try:
+                spreadsheet.share('', perm_type='anyone', role='reader')
+            except:
+                pass  # Skip if sharing fails
             
             # Initialize sheets with headers
             init_sheets_structure(spreadsheet)
@@ -70,9 +72,9 @@ def init_google_sheets():
     
     except Exception as e:
         st.error(f"Could not connect to Google Sheets: {str(e)}")
-        st.info("Running in demo mode with local storage.")
         return None
-
+    
+    
 def init_sheets_structure(spreadsheet):
     """Initialize the Google Sheets with proper structure"""
     # Project Overview sheet
