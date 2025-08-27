@@ -29,10 +29,11 @@ st.markdown("""
 # Replace the init_google_sheets function in your sprint_tracker.py with this:
 
 @st.cache_resource
+# Replace your init_google_sheets function with this version:
 def init_google_sheets():
     """Initialize Google Sheets connection"""
     try:
-        # Only try to get credentials from Streamlit secrets
+        # Get credentials from Streamlit secrets
         if "gcp_service_account" in st.secrets:
             credentials_info = st.secrets["gcp_service_account"]
             credentials = Credentials.from_service_account_info(
@@ -44,7 +45,6 @@ def init_google_sheets():
             )
         else:
             st.error("Google Cloud credentials not found in Streamlit secrets.")
-            st.info("Please add your service account credentials to Streamlit secrets.")
             return None
         
         gc = gspread.authorize(credentials)
@@ -53,28 +53,44 @@ def init_google_sheets():
         spreadsheet_name = "Sprint Tracker Data"
         try:
             spreadsheet = gc.open(spreadsheet_name)
-            st.success(f"Connected to existing spreadsheet: {spreadsheet_name}")
+            st.success(f"✅ Connected to existing spreadsheet")
         except gspread.SpreadsheetNotFound:
-            # Create new spreadsheet
+            # Create new spreadsheet in service account's drive
             spreadsheet = gc.create(spreadsheet_name)
-            st.success(f"Created new spreadsheet: {spreadsheet_name}")
+            st.success(f"✅ Created new spreadsheet in service account drive")
             
-            # Make it accessible (optional - makes it viewable by anyone with link)
+            # Share with your personal Google account so you can access it
             try:
-                spreadsheet.share('', perm_type='anyone', role='reader')
-            except:
-                pass  # Skip if sharing fails
+                # Replace this with YOUR email address (the one you use for Google Drive)
+                your_email = "your-actual-email@gmail.com"  # ← Change this to your email
+                spreadsheet.share(your_email, perm_type='user', role='writer')
+                st.info(f"📧 Shared spreadsheet with {your_email}")
+            except Exception as share_error:
+                st.warning(f"Created spreadsheet but couldn't share: {share_error}")
+                st.info("You can manually access it via the service account or share it yourself")
             
-            # Initialize sheets with headers
+            # Initialize sheets with headers and sample data
             init_sheets_structure(spreadsheet)
+        
+        # Show the spreadsheet URL for easy access
+        if hasattr(spreadsheet, 'url'):
+            st.sidebar.success("✅ Connected to Google Sheets")
+            if st.sidebar.button("📊 Open Spreadsheet"):
+                st.sidebar.markdown(f"[View in Google Sheets]({spreadsheet.url})")
         
         return spreadsheet
     
     except Exception as e:
-        st.error(f"Could not connect to Google Sheets: {str(e)}")
+        error_msg = str(e)
+        if "storageQuotaExceeded" in error_msg:
+            st.error("❌ Google Drive storage is full!")
+            st.info("💡 Solutions:")
+            st.info("1. Free up space in your Google Drive")
+            st.info("2. Or use a different Google account")
+            st.info("3. Or let the app create the sheet in service account drive (update code)")
+        else:
+            st.error(f"Could not connect to Google Sheets: {error_msg}")
         return None
-    
-    
 def init_sheets_structure(spreadsheet):
     """Initialize the Google Sheets with proper structure"""
     # Project Overview sheet
